@@ -3,7 +3,8 @@
 # %% auto 0
 __all__ = ['mean', 'std', 'input_size', 'composed', 'transform', 'dataset_train', 'dataset_val', 'learning_rate', 'momentum',
            'batch_size', 'test_batch_size', 'epochs', 'num_classes', 'train_accuracy_list', 'test_accuracy_list',
-           'loss_list', 'model', 'optimizer', 'criterion', 'train_loader', 'test_loader', 'loss', 'accuracy', 'dataset']
+           'loss_list', 'model', 'trainable_params', 'optimizer', 'criterion', 'train_loader', 'test_loader', 'loss',
+           'accuracy', 'dataset']
 
 # %% ../crack.ipynb 1
 # Get the data
@@ -90,34 +91,32 @@ dataset_val=dataset(transform=transform,train=False)
 torch.manual_seed(0)
 learning_rate = 0.1
 momentum = 0.1
-batch_size = 1000
-test_batch_size = 5000
+batch_size = 8
+test_batch_size = 15
 epochs = 5
 num_classes = 2
 train_accuracy_list = []
 test_accuracy_list = []
 loss_list = []
 
-# %% ../crack.ipynb 8
+# %% ../crack.ipynb 7
 # Initilize the pretrained model and optimizer and loss
-# Using resnet18
+# Using resnet50
 
-# model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
-# for param in model.parameters():
-#             param.requires_grad = False
-# model.fc = nn.Linear(1000,num_classes)
-# trainable_params = []
-# for param in model.parameters():
-#     if param.requires_grad == True:
-#         trainable_params.append(param)
+model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+for param in model.parameters():
+            param.requires_grad = False
+model.fc = nn.Linear(2048,num_classes)
+trainable_params = []
+for param in model.parameters():
+    if param.requires_grad == True:
+        trainable_params.append(param)
 
-model = CNN(32,64,128)
-
-optimizer = torch.optim.SGD(model.parameters(),lr = learning_rate,momentum = momentum)
+optimizer = torch.optim.SGD(trainable_params,lr = learning_rate,momentum = momentum)
 
 criterion = nn.CrossEntropyLoss()
 
-# %% ../crack.ipynb 9
+# %% ../crack.ipynb 8
 #Define the dataloaders
 
 train_loader = torch.utils.data.DataLoader(dataset_train,batch_size=batch_size)
@@ -131,8 +130,11 @@ accuracy = 0
 for epoch in range(epochs):
     correct_train = 0
     loss = 0
+    i=0
     for x,y in train_loader:
-        model.train()
+        print(i)
+        i+=1
+#         model.train()
         optimizer.zero_grad()
         y_pred = model(x)
         loss_val = criterion(y_pred,y)
@@ -141,7 +143,7 @@ for epoch in range(epochs):
         loss += loss_val
         _, yhat = torch.max(y_pred.data, 1)
         correct_train += (yhat == y).sum().item()
-    accuracy = correct_train / len(train_dataset)*100
+    accuracy = correct_train / len(dataset_train)*100
     train_accuracy_list.append(accuracy)
     loss_list.append(loss.data)
     correct_test = 0
@@ -150,11 +152,11 @@ for epoch in range(epochs):
         y_pred = model(x)
         _, yhat = torch.max(y_pred.data, 1)
         correct_test += (yhat == y).sum().item()
-    accuracy = correct_test / len(test_dataset)*100
+    accuracy = correct_test / len(dataset_val)*100
     test_accuracy_list.append(accuracy)
     print(f"Loss: {loss}, Accuracy: {accuracy}")
 
-# %% ../crack.ipynb 10
+# %% ../crack.ipynb 9
 # Plot the loss and accuracy
 plt.plot(train_accuracy_list, label='Training Accuracy')
 plt.xlabel('Epochs')
