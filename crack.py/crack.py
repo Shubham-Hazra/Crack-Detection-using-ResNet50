@@ -17,56 +17,60 @@ __all__ = ['mean', 'std', 'input_size', 'composed', 'transform', 'dataset_train'
 # %% ../crack.ipynb 3
 # Import the relevant libraries
 import os
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
-import torchvision.transforms as transforms
 import torchvision.models as models
+import torchvision.transforms as transforms
 from PIL import Image
+from torch.utils.data import Dataset
 
 # %% ../crack.ipynb 4
 # Create the dataset class
 
+
 class dataset(Dataset):
-    def __init__(self,transform = None,train = True):
-        positive_file_path="./Positive"
-        negative_file_path="./Negative"
-        positive_files=[os.path.join(positive_file_path,file) for file in  os.listdir(positive_file_path) if file.endswith(".jpg")]
+    def __init__(self, transform=None, train=True):
+        positive_file_path = "./Positive"
+        negative_file_path = "./Negative"
+        positive_files = [os.path.join(positive_file_path, file) for file in os.listdir(
+            positive_file_path) if file.endswith(".jpg")]
         positive_files.sort()
-        negative_files=[os.path.join(negative_file_path,file) for file in  os.listdir(negative_file_path) if file.endswith(".jpg")]
+        negative_files = [os.path.join(negative_file_path, file) for file in os.listdir(
+            negative_file_path) if file.endswith(".jpg")]
         negative_files.sort()
 
         num_samples = len(negative_files)+len(positive_files)
-        
-        self.all_files=[None]*num_samples
-        self.all_files[::2]=positive_files
-        self.all_files[1::2]=negative_files 
+
+        self.all_files = [None]*num_samples
+        self.all_files[::2] = positive_files
+        self.all_files[1::2] = negative_files
         # The transform is goint to be used on image
         self.transform = transform
-        #torch.LongTensor
-        self.Y=torch.zeros([num_samples]).type(torch.LongTensor)
-        self.Y[::2]=1
-        self.Y[1::2]=0
-        
+        # torch.LongTensor
+        self.Y = torch.zeros([num_samples]).type(torch.LongTensor)
+        self.Y[::2] = 1
+        self.Y[1::2] = 0
+
         if train:
-            self.all_files=self.all_files[0:30000]
-            self.Y=self.Y[0:30000]
-            self.len=len(self.all_files)
+            self.all_files = self.all_files[0:30000]
+            self.Y = self.Y[0:30000]
+            self.len = len(self.all_files)
         else:
-            self.all_files=self.all_files[30000:]
-            self.Y=self.Y[30000:]
-            self.len=len(self.all_files)
-            
+            self.all_files = self.all_files[30000:]
+            self.Y = self.Y[30000:]
+            self.len = len(self.all_files)
+
     # Get the length
     def __len__(self):
         return self.len
-    
+
     # Getter
     def __getitem__(self, idx):
-        image=Image.open(self.all_files[idx])
-        y=self.Y[idx]
+        image = Image.open(self.all_files[idx])
+        y = self.Y[idx]
         # If there is any transform method, apply it onto the image
         if self.transform:
             image = self.transform(image)
@@ -75,16 +79,17 @@ class dataset(Dataset):
 # %% ../crack.ipynb 5
 # Define the datasets and transforms
 
+
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 input_size = 224
-composed = transform =transforms.Compose([ transforms.RandomResizedCrop(input_size),
-                                          transforms.RandomHorizontalFlip(),
-                                          transforms.ToTensor(), 
-                                          transforms.Normalize(mean, std)])
+composed = transform = transforms.Compose([transforms.RandomResizedCrop(input_size),
+                                           transforms.RandomHorizontalFlip(),
+                                          transforms.ToTensor(),
+                                           transforms.Normalize(mean, std)])
 
-dataset_train=dataset(transform=transform,train=True)
-dataset_val=dataset(transform=transform,train=False)
+dataset_train = dataset(transform=transform, train=True)
+dataset_val = dataset(transform=transform, train=False)
 
 # %% ../crack.ipynb 6
 # Set the parameters
@@ -105,24 +110,27 @@ loss_list = []
 
 model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 for param in model.parameters():
-            param.requires_grad = False
-model.fc = nn.Linear(2048,num_classes)
+    param.requires_grad = False
+model.fc = nn.Linear(2048, num_classes)
 trainable_params = []
 for param in model.parameters():
     if param.requires_grad == True:
         trainable_params.append(param)
 
-optimizer = torch.optim.SGD(trainable_params,lr = learning_rate,momentum = momentum)
+optimizer = torch.optim.SGD(
+    trainable_params, lr=learning_rate, momentum=momentum)
 
 criterion = nn.CrossEntropyLoss()
 
 # %% ../crack.ipynb 8
-#Define the dataloaders
+# Define the dataloaders
 
-train_loader = torch.utils.data.DataLoader(dataset_train,batch_size=batch_size)
-test_loader = torch.utils.data.DataLoader(dataset_val,batch_size=test_batch_size)
+train_loader = torch.utils.data.DataLoader(
+    dataset_train, batch_size=batch_size)
+test_loader = torch.utils.data.DataLoader(
+    dataset_val, batch_size=test_batch_size)
 
-#Train the model
+# Train the model
 
 loss = 0
 accuracy = 0
@@ -130,14 +138,14 @@ accuracy = 0
 for epoch in range(epochs):
     correct_train = 0
     loss = 0
-    i=0
-    for x,y in train_loader:
+    i = 0
+    for x, y in train_loader:
         print(i)
-        i+=1
+        i += 1
 #         model.train()
         optimizer.zero_grad()
         y_pred = model(x)
-        loss_val = criterion(y_pred,y)
+        loss_val = criterion(y_pred, y)
         loss_val.backward()
         optimizer.step()
         loss += loss_val
@@ -147,7 +155,7 @@ for epoch in range(epochs):
     train_accuracy_list.append(accuracy)
     loss_list.append(loss.data)
     correct_test = 0
-    for x,y in test_loader:
+    for x, y in test_loader:
         model.eval()
         y_pred = model(x)
         _, yhat = torch.max(y_pred.data, 1)
@@ -173,3 +181,7 @@ plt.xlabel('Epochs')
 plt.ylabel('Values')
 plt.legend()
 plt.show()
+
+
+# Save the model
+torch.save(model, './crack_detection.pt')
